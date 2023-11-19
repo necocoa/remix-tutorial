@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Form,
   Links,
@@ -11,7 +12,7 @@ import {
   useNavigation,
 } from "@remix-run/react";
 import { json, redirect } from "@remix-run/node";
-import type { LinksFunction } from "@remix-run/node";
+import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 
 import appStylesHref from "./app.css";
 
@@ -21,9 +22,11 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: appStylesHref },
 ];
 
-export const loader = async () => {
-  const contacts = await getContacts();
-  return json({ contacts });
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q");
+  const contacts = await getContacts(q);
+  return json({ contacts, q });
 };
 
 export const action = async () => {
@@ -32,8 +35,13 @@ export const action = async () => {
 };
 
 export default function App() {
-  const { contacts } = useLoaderData<typeof loader>();
+  const { contacts, q } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
+  const [query, setQuery] = useState(q || "");
+
+  useEffect(() => {
+    setQuery(q || "");
+  }, [q]);
 
   return (
     <html lang="en">
@@ -49,11 +57,15 @@ export default function App() {
           <div>
             <Form id="search-form" role="search">
               <input
-                id="q"
                 aria-label="Search contacts"
+                id="q"
+                name="q"
+                // synchronize user's input to component state
+                onChange={(event) => setQuery(event.currentTarget.value)}
                 placeholder="Search"
                 type="search"
-                name="q"
+                // switched to `value` from `defaultValue`
+                value={query}
               />
               <div id="search-spinner" aria-hidden hidden={true} />
             </Form>
