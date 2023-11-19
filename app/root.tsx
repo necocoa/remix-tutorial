@@ -10,6 +10,7 @@ import {
   ScrollRestoration,
   useLoaderData,
   useNavigation,
+  useSubmit,
 } from "@remix-run/react";
 import { json, redirect } from "@remix-run/node";
 import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
@@ -37,6 +38,10 @@ export const action = async () => {
 export default function App() {
   const { contacts, q } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
+  const submit = useSubmit();
+  const searching =
+    navigation.location &&
+    new URLSearchParams(navigation.location.search).has("q");
   const [query, setQuery] = useState(q || "");
 
   useEffect(() => {
@@ -55,19 +60,27 @@ export default function App() {
         <div id="sidebar">
           <h1>Remix Contacts</h1>
           <div>
-            <Form id="search-form" role="search">
+            <Form
+              id="search-form"
+              onChange={(event) => {
+                const isFirstSearch = q === null;
+                submit(event.currentTarget, {
+                  replace: !isFirstSearch,
+                });
+              }}
+              role="search"
+            >
               <input
                 aria-label="Search contacts"
+                className={searching ? "loading" : ""}
                 id="q"
                 name="q"
-                // synchronize user's input to component state
                 onChange={(event) => setQuery(event.currentTarget.value)}
                 placeholder="Search"
                 type="search"
-                // switched to `value` from `defaultValue`
                 value={query}
               />
-              <div id="search-spinner" aria-hidden hidden={true} />
+              <div aria-hidden hidden={!searching} id="search-spinner" />
             </Form>
             <Form method="post">
               <button type="submit">New</button>
@@ -104,7 +117,9 @@ export default function App() {
           </nav>
         </div>
         <div
-          className={navigation.state === "loading" ? "loading" : ""}
+          className={
+            navigation.state === "loading" && !searching ? "loading" : ""
+          }
           id="detail"
         >
           <Outlet />
